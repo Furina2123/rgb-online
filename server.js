@@ -1,69 +1,62 @@
 const express = require('express');
+const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
-const path = require('path');
-const multer = require('multer');
-const fs = require('fs');
 
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-const clients = new Map();
-
-const uploadDir = path.join(__dirname, 'public/uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const upload = multer({
-  dest: uploadDir,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-});
+const port = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.post('/upload', upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ url });
-});
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+let admin = null;
+const clients = new Set();
 
 wss.on('connection', (ws, req) => {
-  clients.set(ws, { zone: 'default' });
+  ws.isAdmin = false;
 
-  ws.on('message', message => {
+  ws.on('message', (msg) => {
     try {
-      const msg = JSON.parse(message);
+      const data = JSON.parse(msg);
 
-      if (msg.type === 'register') {
-        clients.set(ws, { zone: msg.zone || 'default' });
+      if (data.type === 'identify' && data.role === 'admin') {
+        admin = ws;
+        ws.isAdmin = true;
+        console.log('Admin connected');
         return;
       }
 
-      if (msg.type === 'admin') {
-        const targetZones = msg.zone && msg.zone.length ? msg.zone : null;
-        clients.forEach((info, client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            if (!targetZones || targetZones.includes(info.zone)) {
-              client.send(JSON.stringify(msg));
-            }
-          }
-        });
-        return;
-      }
+      if (!ws.isAdmin) return; // Only admin can send commands
+
+      // Broadcast commands to all clients
+      clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(data));
+        }
+      });
 
     } catch (e) {
-      console.error('Invalid message:', e);
+      console.error('Invalid message', e);
     }
   });
 
   ws.on('close', () => {
-    clients.delete(ws);
+    if (ws.isAdmin) {
+      console.log('Admin disconnected');
+      admin = null;
+    } else {
+      clients.delete(ws);
+    }
   });
+
+  if (!ws.isAdmin) {
+    clients.add(ws);
+    console.log('Client connected');
+  }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

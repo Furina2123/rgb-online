@@ -1,16 +1,25 @@
-# RGB Online - Command Center
+# RGB Online Full Setup
 
-## Description
+## Installation locale
 
-Projet Node.js + WebSocket pour contrôler en temps réel l’éclairage RGB sur plusieurs clients (téléphones, écrans...) via un navigateur.  
-- Couleurs fixes  
-- Effets (arc-en-ciel, strobe)  
-- Transitions cut/fade  
-- Upload d’images en direct  
-- Texte dynamique  
-- Gestion de zones (A, B, C, All)
+1. Cloner le repo  
+2. `npm install`  
+3. `npm start`  
+4. Ouvrir `http://localhost:3000/admin.html` pour contrôler  
+5. Ouvrir `http://localhost:3000/client.html` pour afficher
 
-## Installation
+## Déploiement sur Render
 
-1. Cloner ce repo  
-2. I
+1. Pousser le repo sur GitHub  
+2. Connecter le repo à Render (Node.js Web Service)  
+3. Déployer, Render détectera automatiquement le port  
+4. Accéder à `/admin.html` pour commander  
+5. Inviter les clients à ouvrir `/client.html` pour voir les couleurs
+
+## Fonctionnalités
+
+- Palette de 64 couleurs  
+- Couleurs rapides prédéfinies  
+- Transition fondue ou coupure  
+- Effets Arc-en-ciel et Strobe  
+- Raccourcis clavier  

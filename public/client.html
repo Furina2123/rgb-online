@@ -1,126 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RGB Command Center - Client</title>
-<style>
-  html, body {
-    margin: 0; padding: 0;
-    height: 100%; width: 100%;
-    background-color: #000;
-    overflow: hidden;
-    transition: background-color 1s ease;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 48px;
-    text-shadow: 0 0 8px black;
-    user-select: none;
-  }
-  #displayText {
-    position: absolute;
-    top: 10%;
-    width: 100%;
-    text-align: center;
-  }
-  #displayImage {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    display: none;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RGB Display</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      background-color: #000;
+      transition: background-color 1s ease;
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
-<div id="displayText"></div>
-<img id="displayImage" alt="Background Image" />
-<script>
-  const urlParams = new URLSearchParams(window.location.search);
-  const zone = urlParams.get('zone') || 'default';
+  <script>
+    const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(`${wsProtocol}://${location.host}`);
 
-  const ws = new WebSocket(`ws://${location.host}`);
+    let fadeDuration = 1000;
+    let rainbowInterval = null;
+    let strobeInterval = null;
 
-  ws.addEventListener('open', () => {
-    ws.send(JSON.stringify({ type: 'register', zone }));
-  });
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
 
-  const displayText = document.getElementById('displayText');
-  const displayImage = document.getElementById('displayImage');
-
-  let rainbowInterval = null;
-  let strobeInterval = null;
-  let fadeDuration = 1000;
-  let transitionType = 'fade';
-
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    if (data.type === 'admin') {
-      if (data.color) {
+      if (data.type === 'color') {
         clearEffects();
-        transitionType = data.transition || 'cut';
-        if (transitionType === 'fade') {
-          document.body.style.transition = 'background-color 1s ease';
-        } else {
-          document.body.style.transition = 'none';
-        }
+        document.body.style.transition = `background-color ${fadeDuration}ms ease`;
         document.body.style.backgroundColor = data.color;
-        displayImage.style.display = 'none';
-        displayText.textContent = '';
       }
-      else if (data.effect) {
-        clearEffects();
-        if (data.effect === 'rainbow') {
+
+      if (data.type === 'effect') {
+        if (data.effect === 'cut') {
+          clearEffects();
+          document.body.style.transition = 'none';
+        } else if (data.effect === 'fade') {
+          clearEffects();
+          document.body.style.transition = `background-color ${fadeDuration}ms ease`;
+        } else if (data.effect === 'rainbow') {
+          clearEffects();
           let hue = 0;
           rainbowInterval = setInterval(() => {
             document.body.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
             hue = (hue + 5) % 360;
           }, 100);
-          displayImage.style.display = 'none';
-          displayText.textContent = '';
-        }
-        else if (data.effect === 'strobe') {
+        } else if (data.effect === 'strobe') {
+          clearEffects();
           let on = false;
           strobeInterval = setInterval(() => {
             document.body.style.backgroundColor = on ? '#fff' : '#000';
             on = !on;
           }, 100);
-          displayImage.style.display = 'none';
-          displayText.textContent = '';
         }
       }
-      else if (data.image) {
-        clearEffects();
-        displayImage.src = data.image;
-        displayImage.style.display = 'block';
-        displayText.textContent = '';
-        document.body.style.backgroundColor = '#000';
-        document.body.style.transition = 'none';
-      }
-      else if (data.text !== undefined) {
-        clearEffects();
-        displayImage.style.display = 'none';
-        displayText.textContent = data.text;
-        document.body.style.backgroundColor = '#000';
-        document.body.style.transition = 'none';
-      }
-    }
-  };
+    };
 
-  function clearEffects() {
-    if (rainbowInterval) {
-      clearInterval(rainbowInterval);
+    function clearEffects() {
+      if (rainbowInterval) clearInterval(rainbowInterval);
+      if (strobeInterval) clearInterval(strobeInterval);
       rainbowInterval = null;
-    }
-    if (strobeInterval) {
-      clearInterval(strobeInterval);
       strobeInterval = null;
     }
-  }
-</script>
+
+    socket.onopen = () => {
+      console.log('Connecté au serveur');
+    };
+    socket.onerror = () => {
+      console.error('Erreur de connexion WebSocket');
+    };
+  </script>
 </body>
 </html>
