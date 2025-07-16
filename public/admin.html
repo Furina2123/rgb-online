@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>RGB Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 30px);
+            gap: 4px;
+        }
+        .color-box {
+            width: 30px; height: 30px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h2>RGB Admin Panel</h2>
+    <label><input type="checkbox" id="fadeToggle"> Transition fondue</label><br><br>
+    <label>Zones (A,B,C...) :</label>
+    <input type="text" id="zoneInput" placeholder="Ex: A,B,C"><br><br>
+    <div class="color-grid" id="colorGrid"></div>
+    <script>
+        const ws = new WebSocket(location.origin.replace(/^http/, 'ws'));
+        const fadeToggle = document.getElementById("fadeToggle");
+        const zoneInput = document.getElementById("zoneInput");
+        const colorGrid = document.getElementById("colorGrid");
+
+        const colors = [
+            "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#FFFFFF", "#000000",
+            "#800000", "#808000", "#008000", "#800080", "#008080", "#000080", "#FFA500", "#A52A2A",
+            "#DC143C", "#FF1493", "#C71585", "#DB7093", "#B22222", "#FF6347", "#FF4500", "#FFD700",
+            "#B8860B", "#DAA520", "#EEE8AA", "#F0E68C", "#E6E6FA", "#D8BFD8", "#DDA0DD", "#BA55D3",
+            "#9370DB", "#8A2BE2", "#9400D3", "#9932CC", "#4B0082", "#6A5ACD", "#483D8B", "#7B68EE",
+            "#ADFF2F", "#7FFF00", "#7CFC00", "#00FF7F", "#32CD32", "#3CB371", "#2E8B57", "#228B22",
+            "#008B8B", "#20B2AA", "#5F9EA0", "#4682B4", "#1E90FF", "#4169E1", "#6495ED", "#87CEEB",
+            "#87CEFA", "#00BFFF", "#ADD8E6", "#B0E0E6", "#AFEEEE", "#E0FFFF", "#F5F5F5", "#D3D3D3"
+        ];
+
+        colors.forEach(color => {
+            const box = document.createElement("div");
+            box.className = "color-box";
+            box.style.backgroundColor = color;
+            box.onclick = () => {
+                const msg = {
+                    type: "admin",
+                    color: color,
+                    transition: fadeToggle.checked ? "fade" : "cut",
+                    zone: zoneInput.value ? zoneInput.value.split(",") : null
+                };
+                ws.send(JSON.stringify(msg));
+            };
+            colorGrid.appendChild(box);
+        });
+    </script>
+</body>
+</html>
