@@ -1,35 +1,73 @@
-  sendImageBtn.onclick = () => {
-    if (!uploadedImageUrl) return;
-    ws.send(JSON.stringify({
-      type: 'admin',
-      image: uploadedImageUrl,
-      zone: getSelectedZones()
-    }));
-  };
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin RGB - Sans Image</title>
+</head>
+<body>
+  <input type="color" id="colorPicker" />
+  <button id="sendTextBtn">Envoyer Texte</button>
+  <input type="text" id="textInput" placeholder="Texte à envoyer" />
+  <input type="text" id="zoneInput" placeholder="Zones (ex: A,B)" />
 
-  sendTextBtn.onclick = () => {
-    const text = textInput.value.trim();
-    if (!text) return;
-    ws.send(JSON.stringify({
-      type: 'admin',
-      text,
-      zone: getSelectedZones()
-    }));
-  };
+  <script>
+    // Liaison éléments HTML
+    const sendTextBtn = document.getElementById('sendTextBtn');
+    const textInput = document.getElementById('textInput');
+    const colorPicker = document.getElementById('colorPicker');
+    const zoneInput = document.getElementById('zoneInput');
 
-  // Envoi couleur par sélection rapide
-  colorPicker.addEventListener('input', () => {
-    sendColor(colorPicker.value);
-  });
+    // Couleurs rapides
+    const predefined = ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#000000'];
 
-  // Raccourcis clavier 1 à 8 pour couleurs rapides
-  document.addEventListener('keydown', e => {
-    const keys = ['1','2','3','4','5','6','7','8'];
-    const idx = keys.indexOf(e.key);
-    if (idx !== -1) {
-      sendColor(predefined[idx]);
+    // WebSocket
+    const ws = new WebSocket(`ws://${location.host}`);
+
+    // Fonction récupération zones
+    function getSelectedZones() {
+      if (!zoneInput.value) return null;
+      return zoneInput.value.split(',').map(z => z.trim().toUpperCase());
     }
-  });
-</script>
+
+    // Envoi couleur
+    function sendColor(color) {
+      ws.send(JSON.stringify({
+        type: 'admin',
+        color,
+        zone: getSelectedZones()
+      }));
+    }
+
+    // Envoi texte
+    sendTextBtn.onclick = () => {
+      const text = textInput.value.trim();
+      if (!text) {
+        alert('Texte vide.');
+        return;
+      }
+      ws.send(JSON.stringify({
+        type: 'admin',
+        text,
+        zone: getSelectedZones()
+      }));
+    };
+
+    // Envoi couleur via colorPicker
+    colorPicker.addEventListener('input', () => {
+      sendColor(colorPicker.value);
+    });
+
+    // Raccourcis clavier 1 à 8 pour couleurs rapides
+    document.addEventListener('keydown', e => {
+      const keys = ['1','2','3','4','5','6','7','8'];
+      const idx = keys.indexOf(e.key);
+      if (idx !== -1) {
+        sendColor(predefined[idx]);
+      }
+    });
+
+    ws.onopen = () => console.log('WebSocket connecté');
+    ws.onerror = err => console.error('WebSocket erreur:', err);
+  </script>
 </body>
 </html>
