@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RGB Display</title>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
       background-color: #000;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
       transition: background-color 1s ease;
+      overflow: hidden;
     }
   </style>
 </head>
 <body>
   <script>
-    const socket = new WebSocket(`ws://${location.host}`);
+    const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(`${wsProtocol}://${location.host}`);
+
     let fadeDuration = 1000;
     let rainbowInterval = null;
     let strobeInterval = null;
@@ -36,27 +36,21 @@
         if (data.effect === 'cut') {
           clearEffects();
           document.body.style.transition = 'none';
-        }
-
-        if (data.effect === 'fade') {
+        } else if (data.effect === 'fade') {
           clearEffects();
           document.body.style.transition = `background-color ${fadeDuration}ms ease`;
-        }
-
-        if (data.effect === 'rainbow') {
+        } else if (data.effect === 'rainbow') {
           clearEffects();
           let hue = 0;
           rainbowInterval = setInterval(() => {
             document.body.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
             hue = (hue + 5) % 360;
           }, 100);
-        }
-
-        if (data.effect === 'strobe') {
+        } else if (data.effect === 'strobe') {
           clearEffects();
           let on = false;
           strobeInterval = setInterval(() => {
-            document.body.style.backgroundColor = on ? '#ffffff' : '#000000';
+            document.body.style.backgroundColor = on ? '#fff' : '#000';
             on = !on;
           }, 100);
         }
@@ -69,6 +63,13 @@
       rainbowInterval = null;
       strobeInterval = null;
     }
+
+    socket.onopen = () => {
+      console.log('Connecté au serveur');
+    };
+    socket.onerror = () => {
+      console.error('Erreur de connexion WebSocket');
+    };
   </script>
 </body>
 </html>

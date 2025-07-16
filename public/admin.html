@@ -1,126 +1,177 @@
-<!-- admin.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RGB Command Center</title>
   <style>
     body {
-      font-family: sans-serif;
-      background-color: #111;
+      background: #111;
       color: #fff;
+      font-family: sans-serif;
       text-align: center;
+      margin: 0; padding: 20px;
     }
     .palette {
       display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      gap: 10px;
-      margin: 20px;
+      grid-template-columns: repeat(8, 40px);
+      gap: 8px;
+      justify-content: center;
+      margin: 20px 0;
     }
     .color {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       cursor: pointer;
       border: 2px solid #333;
-    }
-    .controls {
-      margin: 20px;
-    }
-    button {
-      margin: 5px;
-      padding: 10px;
-      font-size: 16px;
-    }
-    #colorPicker {
-      margin: 10px;
-      padding: 5px;
+      border-radius: 4px;
     }
     .quick-colors {
+      margin: 10px auto;
       display: flex;
-      flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      margin: 20px auto;
-      max-width: 300px;
     }
     .quick-colors div {
-      width: 30px;
-      height: 30px;
+      width: 30px; height: 30px;
       border-radius: 50%;
       border: 2px solid #555;
       cursor: pointer;
     }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background: #222;
+      color: white;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #444;
+    }
     .toggle {
-      margin: 20px;
+      margin: 15px;
       font-size: 18px;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #f88;
     }
   </style>
 </head>
 <body>
   <h1>🎛 RGB Command Center</h1>
-  <input type="color" id="colorPicker">
+
+  <input type="color" id="colorPicker" value="#ffffff" />
+
   <div class="quick-colors" id="quickColors"></div>
+
   <div class="palette" id="palette"></div>
+
   <div class="toggle">
     <label>
-      <input type="checkbox" id="fadeToggle" checked> Fondue activée (désactivez pour coupure)
+      <input type="checkbox" id="fadeToggle" checked />
+      Fondue activée (désactivez pour coupure)
     </label>
   </div>
-  <div class="controls">
-    <button onclick="sendCommand('rainbow')">Arc-en-ciel</button>
-    <button onclick="sendCommand('strobe')">Strobe</button>
+
+  <div>
+    <button id="rainbowBtn">Arc-en-ciel</button>
+    <button id="strobeBtn">Strobe</button>
   </div>
 
+  <div id="status">Connexion : <span id="connStatus">...</span></div>
+
   <script>
-    const socket = new WebSocket(`ws://${location.host}`);
+    const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(`${wsProtocol}://${location.host}`);
+
     const palette = document.getElementById('palette');
     const colorPicker = document.getElementById('colorPicker');
     const quickColors = document.getElementById('quickColors');
     const fadeToggle = document.getElementById('fadeToggle');
+    const connStatus = document.getElementById('connStatus');
+    const rainbowBtn = document.getElementById('rainbowBtn');
+    const strobeBtn = document.getElementById('strobeBtn');
 
     const predefined = ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#000000'];
-    const keyBindings = ['1', '2', '3', '4', '5', '6', '7', '8'];
+    const keyBindings = '12345678qwertyuiopasdfghjklzxcvbnm'.split('');
 
-    predefined.forEach((color, i) => {
+    function createColorDiv(color) {
       const div = document.createElement('div');
+      div.className = 'color';
       div.style.backgroundColor = color;
+      div.title = color;
       div.onclick = () => sendColor(color);
+      return div;
+    }
+
+    // Quick colors
+    predefined.forEach(c => {
+      const div = document.createElement('div');
+      div.style.backgroundColor = c;
+      div.title = c;
+      div.onclick = () => sendColor(c);
       quickColors.appendChild(div);
     });
 
+    // Palette 64 colors (4x4x4 bits)
     for (let i = 0; i < 64; i++) {
       const r = (i & 0b00110000) >> 4;
       const g = (i & 0b00001100) >> 2;
       const b = (i & 0b00000011);
       const color = `rgb(${r * 85}, ${g * 85}, ${b * 85})`;
-      const div = document.createElement('div');
-      div.className = 'color';
-      div.style.backgroundColor = color;
-      div.onclick = () => sendColor(color);
-      palette.appendChild(div);
+      palette.appendChild(createColorDiv(color));
     }
-
-    colorPicker.addEventListener('input', () => {
-      sendColor(colorPicker.value);
-    });
 
     function sendColor(color) {
-      const transitionType = fadeToggle.checked ? 'fade' : 'cut';
-      socket.send(JSON.stringify({ type: 'effect', effect: transitionType }));
-      socket.send(JSON.stringify({ type: 'color', color }));
+      sendEffect(fadeToggle.checked ? 'fade' : 'cut');
+      sendMessage({ type: 'color', color });
     }
 
-    function sendCommand(effect) {
-      socket.send(JSON.stringify({ type: 'effect', effect }));
+    function sendEffect(effect) {
+      sendMessage({ type: 'effect', effect });
     }
 
-    document.addEventListener('keydown', (e) => {
-      const index = keyBindings.indexOf(e.key);
-      if (index !== -1) {
-        sendColor(predefined[index]);
+    function sendMessage(obj) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(obj));
+      }
+    }
+
+    // Keyboard shortcuts for predefined colors
+    document.addEventListener('keydown', e => {
+      const key = e.key.toLowerCase();
+      const idx = keyBindings.indexOf(key);
+      if (idx !== -1) {
+        let color;
+        if (idx < predefined.length) {
+          color = predefined[idx];
+        } else if (idx < 64 + predefined.length) {
+          const paletteIdx = idx - predefined.length;
+          if (paletteIdx >= 0 && paletteIdx < 64) {
+            const r = (paletteIdx & 0b00110000) >> 4;
+            const g = (paletteIdx & 0b00001100) >> 2;
+            const b = (paletteIdx & 0b00000011);
+            color = `rgb(${r * 85}, ${g * 85}, ${b * 85})`;
+          }
+        }
+        if (color) sendColor(color);
       }
     });
+
+    rainbowBtn.onclick = () => sendEffect('rainbow');
+    strobeBtn.onclick = () => sendEffect('strobe');
+
+    socket.onopen = () => {
+      connStatus.textContent = 'Connecté';
+      socket.send(JSON.stringify({ type: 'identify', role: 'admin' }));
+    };
+    socket.onclose = () => { connStatus.textContent = 'Déconnecté'; };
+    socket.onerror = () => { connStatus.textContent = 'Erreur de connexion'; };
   </script>
 </body>
 </html>
