@@ -1,62 +1,60 @@
+
 const express = require('express');
-const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
+const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(express.static(path.join(__dirname, 'public')));
-
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let admin = null;
-const clients = new Set();
+const PORT = process.env.PORT || 10000;
 
-wss.on('connection', (ws, req) => {
-  ws.isAdmin = false;
+app.use(express.static(path.join(__dirname, 'public')));
 
-  ws.on('message', (msg) => {
+let clients = [];
+
+wss.on('connection', (ws) => {
+  ws.role = 'client';
+  clients.push(ws);
+
+  ws.on('message', (message) => {
+    let data;
     try {
-      const data = JSON.parse(msg);
-
-      if (data.type === 'identify' && data.role === 'admin') {
-        admin = ws;
-        ws.isAdmin = true;
-        console.log('Admin connected');
-        return;
-      }
-
-      if (!ws.isAdmin) return; // Only admin can send commands
-
-      // Broadcast commands to all clients
-      clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(data));
-        }
-      });
-
+      data = JSON.parse(message);
     } catch (e) {
-      console.error('Invalid message', e);
+      console.error('Invalid message:', message);
+      return;
+    }
+
+    if (data.type === 'identify' && data.role === 'admin') {
+      ws.role = 'admin';
+      console.log('Admin connected');
+      return;
+    }
+
+    if (ws.role === 'admin') {
+      if (data.type === 'color' || data.type === 'effect' || data.type === 'text') {
+        const zone = data.zone || null;
+
+        clients.forEach(client => {
+          if (client !== ws && client.readyState === WebSocket.OPEN && (zone === null || zone.includes(client.zone))) {
+            client.send(JSON.stringify(data));
+          }
+        });
+      }
+    }
+
+    if (data.type === 'join' && data.zone) {
+      ws.zone = data.zone;
     }
   });
 
   ws.on('close', () => {
-    if (ws.isAdmin) {
-      console.log('Admin disconnected');
-      admin = null;
-    } else {
-      clients.delete(ws);
-    }
+    clients = clients.filter(c => c !== ws);
   });
-
-  if (!ws.isAdmin) {
-    clients.add(ws);
-    console.log('Client connected');
-  }
 });
 
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+server.listen(PORT, () => {
+  console.log('Serveur  exécuté  sur  le port', PORT);
 });

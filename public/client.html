@@ -1,75 +1,82 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>RGB Display</title>
   <style>
     html, body {
-      margin: 0; padding: 0;
-      height: 100%; width: 100%;
-      background-color: #000;
-      transition: background-color 1s ease;
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      width: 100%;
       overflow: hidden;
+      transition: background-color 1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
     }
   </style>
 </head>
 <body>
+  <div id="text"></div>
   <script>
-    const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${wsProtocol}://${location.host}`);
-
+    const ws = new WebSocket(location.origin.replace(/^http/, 'ws'));
     let fadeDuration = 1000;
-    let rainbowInterval = null;
-    let strobeInterval = null;
+    let rainbowInterval, strobeInterval;
+    const textDisplay = document.getElementById("text");
 
-    socket.onmessage = (event) => {
+    ws.onopen = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const zone = urlParams.get('zone');
+      if (zone) {
+        ws.send(JSON.stringify({ type: 'join', zone }));
+      }
+    };
+
+    ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
       if (data.type === 'color') {
         clearEffects();
-        document.body.style.transition = `background-color ${fadeDuration}ms ease`;
         document.body.style.backgroundColor = data.color;
       }
-
       if (data.type === 'effect') {
+        clearEffects();
         if (data.effect === 'cut') {
-          clearEffects();
           document.body.style.transition = 'none';
-        } else if (data.effect === 'fade') {
-          clearEffects();
+        }
+        if (data.effect === 'fade') {
           document.body.style.transition = `background-color ${fadeDuration}ms ease`;
-        } else if (data.effect === 'rainbow') {
-          clearEffects();
+        }
+        if (data.effect === 'rainbow') {
           let hue = 0;
           rainbowInterval = setInterval(() => {
             document.body.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
-            hue = (hue + 5) % 360;
-          }, 100);
-        } else if (data.effect === 'strobe') {
-          clearEffects();
+            hue = (hue + 30) % 360;
+          }, 30);
+        }
+        if (data.effect === 'strobe') {
           let on = false;
           strobeInterval = setInterval(() => {
-            document.body.style.backgroundColor = on ? '#fff' : '#000';
+            document.body.style.backgroundColor = on ? '#ffffff' : '#000000';
             on = !on;
           }, 100);
         }
       }
+      if (data.type === 'text') {
+        textDisplay.textContent = data.text;
+      }
     };
 
     function clearEffects() {
-      if (rainbowInterval) clearInterval(rainbowInterval);
-      if (strobeInterval) clearInterval(strobeInterval);
+      clearInterval(rainbowInterval);
+      clearInterval(strobeInterval);
       rainbowInterval = null;
       strobeInterval = null;
     }
-
-    socket.onopen = () => {
-      console.log('Connecté au serveur');
-    };
-    socket.onerror = () => {
-      console.error('Erreur de connexion WebSocket');
-    };
   </script>
 </body>
 </html>

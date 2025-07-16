@@ -1,25 +1,33 @@
-# RGB Online Full Setup
+# RGB Online
 
-## Installation locale
+Un système de contrôle lumineux en ligne pour shows, concerts et événements. Permet de contrôler les téléphones clients via leur écran, en envoyant des couleurs, effets lumineux, et plus encore en temps réel.
 
-1. Cloner le repo  
-2. `npm install`  
-3. `npm start`  
-4. Ouvrir `http://localhost:3000/admin.html` pour contrôler  
-5. Ouvrir `http://localhost:3000/client.html` pour afficher
+## ✨ Fonctions
+- Contrôle centralisé via interface admin
+- Palette RGB 64 couleurs + raccourcis clavier
+- Effets spéciaux : Arc-en-ciel, Strobe
+- Transition fondue (fade) ou coupure nette (cut)
+- Support des ZONES : chaque spectateur peut être assigné à une zone (A, B, C...)
+- Affichage dynamique côté client sans rechargement
+- Affichage de message texte personnalisable
+- Liste des clients connectés en temps réel
 
-## Déploiement sur Render
+## 🔧 Installation (local)
 
-1. Pousser le repo sur GitHub  
-2. Connecter le repo à Render (Node.js Web Service)  
-3. Déployer, Render détectera automatiquement le port  
-4. Accéder à `/admin.html` pour commander  
-5. Inviter les clients à ouvrir `/client.html` pour voir les couleurs
+```bash
+npm install
+node server.js
+```
 
-## Fonctionnalités
+Accessible ensuite sur `http://localhost:10000`
 
-- Palette de 64 couleurs  
-- Couleurs rapides prédéfinies  
-- Transition fondue ou coupure  
-- Effets Arc-en-ciel et Strobe  
-- Raccourcis clavier  
+## ☁️ Déploiement Render
+
+1. Crée un projet sur [render.com](https://render.com)
+2. Déploie depuis GitHub ce dossier
+3. Active WebSocket dans les options avancées
+
+## 🔤 Raccourcis clavier
+
+- `1 à 8` → Couleurs rapides
+- `a à z` → Accès palette RGB (64 couleurs)
