@@ -1,44 +1,42 @@
 const express = require('express');
-const WebSocket = require('ws');
 const http = require('http');
+const WebSocket = require('ws');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let clients = [];
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-wss.on('connection', (ws) => {
-    clients.push(ws);
-    console.log('Client connected');
-
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
-            if (data.type === "admin") {
-                clients.forEach(client => {
-                    if (client !== ws && client.readyState === WebSocket.OPEN) {
-                        if (!data.zone || (client.zone && data.zone.includes(client.zone))) {
-                            client.send(JSON.stringify(data));
-                        }
-                    }
-                });
-            } else if (data.type === "zone_register") {
-                ws.zone = data.zone;
-            }
-        } catch (e) {
-            console.error("Invalid message", e);
-        }
-    });
-
-    ws.on('close', () => {
-        console.log('Client disconnected');
-        clients = clients.filter(c => c !== ws);
-    });
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get('/client', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client.html'));
+});
+
+wss.on('connection', function connection(ws) {
+  console.log('Client connected');
+
+  ws.on('close', () => {
+    console.log('Client disconnected');
+  });
+
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      console.log('Broadcasting:', data);
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(data));
+        }
+      });
+    } catch (err) {
+      console.error('Invalid message:', message);
+    }
+  });
+});
+
+server.listen(3000, '0.0.0.0', () => {
+  console.log('Server running at http://0.0.0.0:3000');
+});

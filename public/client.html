@@ -1,44 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>RGB Client</title>
-    <style>
-        html, body {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            background: black;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RGB Display</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      transition: background-color 1s ease;
+    }
+  </style>
 </head>
 <body>
-<script>
-    const params = new URLSearchParams(window.location.search);
-    const zone = params.get("zone") || "A";
+  <script>
+    const socket = new WebSocket(`ws://${location.host}`);
+    let fadeDuration = 1000;
+    let rainbowInterval = null;
+    let strobeInterval = null;
 
-    const ws = new WebSocket(location.origin.replace(/^http/, 'ws'));
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
 
-    ws.onopen = () => {
-        ws.send(JSON.stringify({ type: "zone_register", zone: zone }));
+      if (data.type === 'color') {
+        clearEffects();
+        document.body.style.transition = `background-color ${fadeDuration}ms ease`;
+        document.body.style.backgroundColor = data.color;
+      }
+
+      if (data.type === 'effect') {
+        if (data.effect === 'cut') {
+          clearEffects();
+          document.body.style.transition = 'none';
+        }
+
+        if (data.effect === 'fade') {
+          clearEffects();
+          document.body.style.transition = `background-color ${fadeDuration}ms ease`;
+        }
+
+        if (data.effect === 'rainbow') {
+          clearEffects();
+          let hue = 0;
+          rainbowInterval = setInterval(() => {
+            document.body.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+            hue = (hue + 5) % 360;
+          }, 100);
+        }
+
+        if (data.effect === 'strobe') {
+          clearEffects();
+          let on = false;
+          strobeInterval = setInterval(() => {
+            document.body.style.backgroundColor = on ? '#ffffff' : '#000000';
+            on = !on;
+          }, 100);
+        }
+      }
     };
 
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.color) {
-            document.body.style.transition = data.transition === "fade" ? "background 1s ease" : "none";
-            document.body.style.backgroundColor = data.color;
-        }
-        if (data.flash) {
-            const flash = document.createElement('div');
-            flash.style.position = 'absolute';
-            flash.style.top = 0; flash.style.left = 0;
-            flash.style.width = '100%'; flash.style.height = '100%';
-            flash.style.background = data.color;
-            flash.style.zIndex = 9999;
-            document.body.appendChild(flash);
-            setTimeout(() => flash.remove(), 200);
-        }
-    };
-</script>
+    function clearEffects() {
+      if (rainbowInterval) clearInterval(rainbowInterval);
+      if (strobeInterval) clearInterval(strobeInterval);
+      rainbowInterval = null;
+      strobeInterval = null;
+    }
+  </script>
 </body>
 </html>
